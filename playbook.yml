@@ -1,0 +1,89 @@
+---
+- name: "Lab 2, Sesion 5: Delegaciones. Trabajo sobre nodo01"
+  hosts: nodo01
+  vars:
+    dir: "/tmp/"
+    fichero: "{{ dir }}datos_horarios_{{ ansible_facts['hostname'] }}.txt"
+  
+  tasks:
+    - name: "Guarda la hora (hh:mm:ss) actual en un registro"
+      command: "date +%T"
+      register: hora_pre
+      # Ejecutamos con "ansible-playbook playbook.yml -v" para ver el formato de salida => hora_pre.stdout_lines[0]
+
+    - name: "Cambia la hora del nodo01 a Europe/Moscow y guarda la salida en un registro"
+      timezone:
+        name: Europe/Moscow
+      register: cambio_tz
+ 
+    - name: "Guarda la hora (hh:mm:ss) actual en un registro"
+      command: "date +%T"
+      register: hora_post
+
+    - name: "Escribe en {{ fichero }} la diferencia de horas"
+      blockinfile:
+        path: "{{ fichero }}"
+        create: yes
+        block: |
+          La zona horaria antes del cambio es {{ cambio_tz.diff.before.name }} Y la hora era {{ hora_pre.stdout_lines[0] }}
+          La zona horaria despues del cambio es {{ cambio_tz.diff.after.name }} Y la hora era {{ hora_post.stdout_lines[0] }}
+    
+    - name: "Restaura la zona horaria inicial"
+      timezone:
+        name: "{{ cambio_tz.diff.before.name }}"
+        # Comprobar con
+        # timedatectl | grep "Time zone"
+
+    - name: "Copia {{ fichero }} al nodo master"
+      fetch:
+        src: "{{ fichero }}"
+        dest: "{{ dir }}"
+        flat: yes
+        # Sabemos por FDF que habria que usar synchronize y que no es posible hacerlo para los dos nodos
+        # Asi que usamos fetch y alteramos el primer play para traer el fichero del nodo01
+        # Se consigue el objetivo, pero no de forma canonica ;-)
+
+- name: "Lab 2, Sesion 5: Delegaciones. Trabajo sobre nodo02"
+  hosts: nodo02
+  vars:
+    dir: "/tmp/"
+    fichero: "{{ dir }}datos_horarios_{{ ansible_facts['hostname'] }}.txt"
+  
+  tasks:
+    - name: "Guarda la hora (hh:mm:ss) actual en un registro"
+      command: "date +%T"
+      register: hora_pre
+      # Ejecutamos con "ansible-playbook playbook.yml -v" para ver el formato de salida => hora_pre.stdout_lines[0]
+
+    - name: "Cambia la hora del nodo01 a Europe/Moscow y guarda la salida en un registro"
+      timezone:
+        name: Asia/Tokyo
+      register: cambio_tz
+ 
+    - name: "Guarda la hora (hh:mm:ss) actual en un registro"
+      command: "date +%T"
+      register: hora_post
+
+    - name: "Escribe en {{ fichero }} la diferencia de horas"
+      blockinfile:
+        path: "{{ fichero }}"
+        create: yes
+        block: |
+          La zona horaria antes del cambio es {{ cambio_tz.diff.before.name }} Y la hora era {{ hora_pre.stdout_lines[0] }}
+          La zona horaria despues del cambio es {{ cambio_tz.diff.after.name }} Y la hora era {{ hora_post.stdout_lines[0] }}
+    
+    - name: "Restaura la zona horaria inicial"
+      timezone:
+        name: "{{ cambio_tz.diff.before.name }}"
+        # Comprobar con
+        # timedatectl | grep "Time zone"
+
+    - name: "Copia {{ fichero }} al nodo master"
+      fetch:
+        src: "{{ fichero }}"
+        dest: "{{ dir }}"
+        flat: yes
+        # Sabemos por FDF que habria que usar synchronize y que no es posible hacerlo para los dos nodos
+        # Asi que usamos fetch y alteramos el primer play para traer el fichero del nodo01
+        # Se consigue el objetivo, pero no de forma canonica ;-)
+...
